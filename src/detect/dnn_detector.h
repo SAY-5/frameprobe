@@ -3,14 +3,10 @@
 
 #ifdef FRAMEPROBE_WITH_OPENCV
 
-#include <memory>
+#include <opencv2/dnn.hpp>
 #include <string>
 
 #include "detect/detector.h"
-
-namespace cv::dnn {
-class Net;
-}
 
 namespace frameprobe {
 
@@ -36,7 +32,7 @@ class DnnDetector : public Detector {
 
   private:
     DnnConfig cfg_;
-    std::unique_ptr<cv::dnn::Net> net_;
+    cv::dnn::Net net_;
 };
 
 }  // namespace frameprobe

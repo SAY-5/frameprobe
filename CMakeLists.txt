@@ -83,7 +83,9 @@ if(FRAMEPROBE_BUILD_TESTS)
     add_executable(frameprobe_tests ${FRAMEPROBE_UNIT_TESTS} ${FRAMEPROBE_E2E_TESTS})
     target_link_libraries(frameprobe_tests PRIVATE frameprobe_core GTest::gtest_main)
     include(GoogleTest)
-    gtest_discover_tests(frameprobe_tests)
+    # Bump the discovery probe timeout: with OpenCV linked, loading the shared
+    # libraries at startup can exceed the 5s default on a cold cache.
+    gtest_discover_tests(frameprobe_tests DISCOVERY_TIMEOUT 60)
 endif()
 
 if(FRAMEPROBE_BUILD_FUZZ)

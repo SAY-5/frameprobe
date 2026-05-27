@@ -9,8 +9,8 @@
 namespace frameprobe {
 
 DnnDetector::DnnDetector(DnnConfig cfg) : cfg_(std::move(cfg)) {
-    net_ = std::make_unique<cv::dnn::Net>(cv::dnn::readNetFromONNX(cfg_.model_path));
-    if (net_->empty()) {
+    net_ = cv::dnn::readNetFromONNX(cfg_.model_path);
+    if (net_.empty()) {
         throw std::runtime_error("DnnDetector: failed to load model " + cfg_.model_path);
     }
 }
@@ -25,8 +25,8 @@ DetectionResult DnnDetector::detect(const Frame& frame) {
     cv::Mat blob =
         cv::dnn::blobFromImage(mat, 1.0 / 127.5, cv::Size(cfg_.input_size, cfg_.input_size),
                                cv::Scalar(127.5, 127.5, 127.5), true, false);
-    net_->setInput(blob);
-    cv::Mat out = net_->forward();
+    net_.setInput(blob);
+    cv::Mat out = net_.forward();
 
     // MobileNet-SSD style output: [1,1,N,7] -> [_, class, conf, x1,y1,x2,y2].
     const int n = out.size[2];
