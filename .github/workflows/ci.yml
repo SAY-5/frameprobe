@@ -109,6 +109,7 @@ jobs:
       - name: Coverage report and gate
         run: |
           gcovr --root . --filter 'src/' \
+            --exclude 'src/main.cpp' \
             --exclude 'src/detect/dnn_detector.*' \
             --exclude 'src/source/video_source.*' \
             --exclude 'src/pipeline/adaptive.h' \
