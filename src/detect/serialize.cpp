@@ -78,4 +78,41 @@ std::optional<DetectionResult> deserialize(const std::uint8_t* data, std::size_t
     return result;
 }
 
+std::vector<std::uint8_t> serialize_header(const FrameHeader& h) {
+    std::vector<std::uint8_t> out;
+    put<std::uint32_t>(out, kFrameMagic);
+    put<std::uint64_t>(out, h.index);
+    put<std::uint16_t>(out, h.width);
+    put<std::uint16_t>(out, h.height);
+    put<std::uint8_t>(out, h.channels);
+    put<std::uint8_t>(out, 0);  // reserved
+    return out;
+}
+
+std::optional<FrameHeader> parse_header(const std::uint8_t* data, std::size_t size) {
+    if (data == nullptr)
+        return std::nullopt;
+    std::size_t off = 0;
+    std::uint32_t magic = 0;
+    if (!take(data, size, off, magic) || magic != kFrameMagic)
+        return std::nullopt;
+
+    FrameHeader h;
+    std::uint8_t reserved = 0;
+    if (!take(data, size, off, h.index) || !take(data, size, off, h.width) ||
+        !take(data, size, off, h.height) || !take(data, size, off, h.channels) ||
+        !take(data, size, off, reserved)) {
+        return std::nullopt;
+    }
+    if (h.width == 0 || h.height == 0)
+        return std::nullopt;
+    if (h.channels < 1 || h.channels > 4)
+        return std::nullopt;
+    // Guard against an integer overflow in the implied byte count.
+    const std::uint64_t bytes = static_cast<std::uint64_t>(h.width) * h.height * h.channels;
+    if (bytes > 0xFFFFFFFFull)
+        return std::nullopt;
+    return h;
+}
+
 }  // namespace frameprobe::wire

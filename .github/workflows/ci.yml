@@ -81,7 +81,7 @@ jobs:
       - name: Build fuzzer
         run: cmake --build build-fuzz -j --target fuzz_detection
       - name: Smoke run
-        run: ./build-fuzz/fuzz_detection -runs=200000 -max_len=512
+        run: ./build-fuzz/fuzz_detection -runs=300000 -max_len=512 tests/fuzz/corpus
 
   bench-smoke:
     runs-on: ubuntu-24.04
@@ -93,6 +93,28 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFRAMEPROBE_BUILD_TESTS=OFF && cmake --build build -j --target throughput_bench
       - name: Smoke
         run: ./build/throughput_bench --frames 300
+
+  coverage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ gcovr
+      - name: Configure with coverage
+        run: cmake -S . -B build-cov -DCMAKE_BUILD_TYPE=Debug -DFRAMEPROBE_COVERAGE=ON -DFRAMEPROBE_BUILD_BENCH=OFF -DCMAKE_CXX_COMPILER=g++
+      - name: Build
+        run: cmake --build build-cov -j
+      - name: Run tests
+        run: ctest --test-dir build-cov --output-on-failure
+      - name: Coverage report and gate
+        run: |
+          gcovr --root . --filter 'src/' \
+            --exclude 'src/detect/dnn_detector.*' \
+            --exclude 'src/source/video_source.*' \
+            --exclude 'src/pipeline/adaptive.h' \
+            --print-summary --fail-under-line 85 \
+            --txt coverage.txt
+          cat coverage.txt
 
   docker:
     runs-on: ubuntu-24.04

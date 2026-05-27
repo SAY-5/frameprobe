@@ -32,6 +32,31 @@ inline std::optional<DetectionResult> deserialize(const std::vector<std::uint8_t
     return deserialize(buf.data(), buf.size());
 }
 
+// A fixed frame-metadata header that can prefix a raw frame on the wire (e.g.
+// when a decoder feeds frames over a socket). Parsing untrusted headers is a
+// classic source of integer-overflow bugs, so this is a second fuzz target.
+//
+// Layout (little-endian): u32 magic('FPFR') u64 index, u16 width, u16 height,
+//                         u8 channels, u8 reserved
+struct FrameHeader {
+    std::uint64_t index = 0;
+    std::uint16_t width = 0;
+    std::uint16_t height = 0;
+    std::uint8_t channels = 0;
+};
+
+constexpr std::uint32_t kFrameMagic = 0x46504652u;  // 'FPFR'
+
+std::vector<std::uint8_t> serialize_header(const FrameHeader& h);
+
+// Rejects bad magic, truncation, zero dimensions, channels outside 1..4, and any
+// header whose width*height*channels would overflow a 32-bit byte count.
+std::optional<FrameHeader> parse_header(const std::uint8_t* data, std::size_t size);
+
+inline std::optional<FrameHeader> parse_header(const std::vector<std::uint8_t>& buf) {
+    return parse_header(buf.data(), buf.size());
+}
+
 }  // namespace wire
 }  // namespace frameprobe
 
