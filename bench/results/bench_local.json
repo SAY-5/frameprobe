@@ -1,0 +1,10 @@
+{
+  "cases": [
+    {"fps": 15.000, "compute_us": 0, "sustained_fps": 113528.318, "p50_us": 5.750, "p95_us": 16.792, "p99_us": 80.300, "miss_rate": 0.000, "peak_queue": 7},
+    {"fps": 15.000, "compute_us": 200, "sustained_fps": 4913.595, "p50_us": 3625.833, "p95_us": 3701.392, "p99_us": 3744.714, "miss_rate": 0.000, "peak_queue": 16},
+    {"fps": 30.000, "compute_us": 0, "sustained_fps": 110543.894, "p50_us": 4.896, "p95_us": 7.708, "p99_us": 11.127, "miss_rate": 0.000, "peak_queue": 6},
+    {"fps": 30.000, "compute_us": 200, "sustained_fps": 4930.201, "p50_us": 3623.146, "p95_us": 3685.307, "p99_us": 3741.260, "miss_rate": 0.000, "peak_queue": 16},
+    {"fps": 60.000, "compute_us": 0, "sustained_fps": 115258.642, "p50_us": 4.771, "p95_us": 8.625, "p99_us": 14.627, "miss_rate": 0.000, "peak_queue": 3},
+    {"fps": 60.000, "compute_us": 200, "sustained_fps": 4920.727, "p50_us": 3626.750, "p95_us": 3685.833, "p99_us": 3695.501, "miss_rate": 0.000, "peak_queue": 16}
+  ]
+}

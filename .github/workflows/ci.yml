@@ -93,6 +93,10 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFRAMEPROBE_BUILD_TESTS=OFF && cmake --build build -j --target throughput_bench
       - name: Smoke
         run: ./build/throughput_bench --frames 300
+      - name: Regression gate (self-consistent baseline on this runner)
+        run: |
+          ./build/throughput_bench --frames 600 --out /tmp/baseline.json
+          ./build/throughput_bench --frames 300 --regress /tmp/baseline.json --threshold 0.30
 
   coverage:
     runs-on: ubuntu-24.04
