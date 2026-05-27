@@ -29,7 +29,7 @@ struct Case {
     std::size_t peak_queue;
 };
 
-Case run_case(std::uint64_t frames, double fps, std::uint32_t compute_us) {
+Case run_case(std::uint64_t frames, double fps, std::uint32_t compute_us, int workers = 1) {
     SyntheticConfig stream;
     stream.frames = frames;
     StubConfig sc;
@@ -39,6 +39,7 @@ Case run_case(std::uint64_t frames, double fps, std::uint32_t compute_us) {
     PipelineConfig cfg;
     cfg.target_fps = fps;
     cfg.queue_capacity = 16;
+    cfg.inference_workers = workers;
 
     Harness h(std::make_unique<SyntheticSource>(stream), std::make_unique<StubDetector>(sc), cfg);
     FrameStats s = h.run();
@@ -51,6 +52,27 @@ Case run_case(std::uint64_t frames, double fps, std::uint32_t compute_us) {
                 s.latency().percentile(99),
                 s.miss_rate(),
                 s.peak_queue_depth()};
+}
+
+// v3: sweep inference worker counts at a fixed, inference-bound compute cost and
+// print the FPS scaling so a reader can see where it saturates (decode-bound vs
+// inference-bound).
+void run_scaling(std::uint64_t frames, std::uint32_t compute_us) {
+    std::cout << "{\n  \"scaling\": [\n";
+    const std::vector<int> worker_counts = {1, 2, 4, 8};
+    double base_fps = 0.0;
+    for (std::size_t i = 0; i < worker_counts.size(); ++i) {
+        const int w = worker_counts[i];
+        Case c = run_case(frames, 1000.0, compute_us, w);
+        if (i == 0)
+            base_fps = c.sustained_fps;
+        const double speedup = base_fps > 0 ? c.sustained_fps / base_fps : 1.0;
+        std::cout << "    {\"workers\": " << w << ", \"compute_us\": " << compute_us
+                  << ", \"sustained_fps\": " << c.sustained_fps << ", \"speedup\": " << speedup
+                  << ", \"p99_us\": " << c.p99 << "}";
+        std::cout << (i + 1 < worker_counts.size() ? ",\n" : "\n");
+    }
+    std::cout << "  ]\n}\n";
 }
 
 std::string to_json(const std::vector<Case>& cases) {
@@ -112,6 +134,8 @@ int main(int argc, char** argv) {
     std::string out_path;
     std::string regress_path;
     double threshold = 0.30;
+    bool scaling = false;
+    std::uint32_t scaling_compute_us = 200;
 
     for (int i = 1; i < argc; ++i) {
         std::string opt = argv[i];
@@ -124,6 +148,15 @@ int main(int argc, char** argv) {
             regress_path = val();
         else if (opt == "--threshold")
             threshold = std::strtod(val(), nullptr);
+        else if (opt == "--scaling")
+            scaling = true;
+        else if (opt == "--scaling-compute-us")
+            scaling_compute_us = static_cast<std::uint32_t>(std::strtoul(val(), nullptr, 10));
+    }
+
+    if (scaling) {
+        run_scaling(frames, scaling_compute_us);
+        return 0;
     }
 
     const std::vector<std::pair<double, std::uint32_t>> matrix = {

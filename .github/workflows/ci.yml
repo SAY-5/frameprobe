@@ -68,7 +68,7 @@ jobs:
       - name: Build
         run: cmake --build build-tsan -j
       - name: Pipeline concurrency stress
-        run: ctest --test-dir build-tsan --output-on-failure -R "PipelineConcurrency|BoundedQueue|PipelineE2E"
+        run: ctest --test-dir build-tsan --output-on-failure -R "PipelineConcurrency|BoundedQueue|PipelineE2E|Reorder|Property"
 
   fuzz-smoke:
     runs-on: ubuntu-24.04
@@ -97,6 +97,8 @@ jobs:
         run: |
           ./build/throughput_bench --frames 600 --out /tmp/baseline.json
           ./build/throughput_bench --frames 300 --regress /tmp/baseline.json --threshold 0.30
+      - name: Inference worker scaling
+        run: ./build/throughput_bench --scaling --frames 600 --scaling-compute-us 500
 
   coverage:
     runs-on: ubuntu-24.04
