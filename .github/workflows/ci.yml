@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Check formatting
+        run: find src tests bench -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+  build-gcc:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake g++ libopencv-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFRAMEPROBE_WITH_OPENCV=ON -DCMAKE_CXX_COMPILER=g++
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+      - name: Run harness
+        run: ./build/frameprobe --source synthetic --fps 30 --frames 300
+
+  build-clang:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake clang libopencv-dev
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFRAMEPROBE_WITH_OPENCV=ON -DCMAKE_CXX_COMPILER=clang++
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  asan-ubsan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake clang libopencv-dev
+      - name: Configure
+        run: cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=Debug -DFRAMEPROBE_ASAN=ON -DCMAKE_CXX_COMPILER=clang++
+      - name: Build
+        run: cmake --build build-asan -j
+      - name: Test
+        run: ctest --test-dir build-asan --output-on-failure
+
+  tsan-stress:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake clang libopencv-dev
+      - name: Configure
+        run: cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DFRAMEPROBE_TSAN=ON -DCMAKE_CXX_COMPILER=clang++
+      - name: Build
+        run: cmake --build build-tsan -j
+      - name: Pipeline concurrency stress
+        run: ctest --test-dir build-tsan --output-on-failure -R "PipelineConcurrency|BoundedQueue|PipelineE2E"
+
+  fuzz-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake clang libopencv-dev
+      - name: Configure
+        run: cmake -S . -B build-fuzz -DCMAKE_BUILD_TYPE=Debug -DFRAMEPROBE_BUILD_FUZZ=ON -DFRAMEPROBE_BUILD_TESTS=OFF -DCMAKE_CXX_COMPILER=clang++
+      - name: Build fuzzer
+        run: cmake --build build-fuzz -j --target fuzz_detection
+      - name: Smoke run
+        run: ./build-fuzz/fuzz_detection -runs=200000 -max_len=512
+
+  bench-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: Build bench
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFRAMEPROBE_BUILD_TESTS=OFF && cmake --build build -j --target throughput_bench
+      - name: Smoke
+        run: ./build/throughput_bench --frames 300
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: frameprobe:ci
