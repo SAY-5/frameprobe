@@ -1,0 +1,7 @@
+services:
+  frameprobe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: frameprobe:local
+    command: ["--source", "synthetic", "--fps", "30", "--frames", "300"]
