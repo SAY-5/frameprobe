@@ -68,7 +68,10 @@ jobs:
       - name: Build
         run: cmake --build build-tsan -j
       - name: Pipeline concurrency stress
-        run: ctest --test-dir build-tsan --output-on-failure -R "PipelineConcurrency|BoundedQueue|PipelineE2E|Reorder|Property"
+        # Timing-dependent assertions (deadline/overload behaviour) are excluded:
+        # TSan instrumentation distorts the spin-loop compute cost, so those run
+        # in the normal builds. The threaded structure is still exercised here.
+        run: ctest --test-dir build-tsan --output-on-failure -R "PipelineConcurrency|BoundedQueue|PipelineE2E|Reorder|Property|Adaptive" -E "HoldsDeadlineOnProcessedFramesUnderOverload|NoSkipWhenInputArrivesSlowly"
 
   fuzz-smoke:
     runs-on: ubuntu-24.04

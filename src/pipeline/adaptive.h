@@ -20,7 +20,8 @@ namespace frameprobe {
 class AdaptiveController {
   public:
     AdaptiveController(std::size_t high_watermark, std::size_t capacity, int max_skip)
-        : high_watermark_(high_watermark == 0 ? capacity : high_watermark),
+        : high_watermark_(high_watermark == 0 ? std::max<std::size_t>(1, capacity / 4)
+                                              : high_watermark),
           capacity_(capacity == 0 ? 1 : capacity),
           max_skip_(std::max(1, max_skip)) {
     }
